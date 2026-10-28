@@ -1,0 +1,59 @@
+# Local stack: PostgreSQL, Redis, and ShortLink on :5276. Passwords here are for this machine only.
+name: shortlink
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: shortlink-postgres
+    environment:
+      POSTGRES_DB: shortlink
+      POSTGRES_USER: shortlink
+      POSTGRES_PASSWORD: shortlink_local
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shortlink -d shortlink"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:8-alpine
+    container_name: shortlink-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+    container_name: shortlink-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "5276:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__ShortLink: "Host=postgres;Database=shortlink;Username=shortlink;Password=shortlink_local"
+      ConnectionStrings__Redis: "redis:6379"
+      Database__MigrateOnStartup: "true"
+      Links__PublicBaseUrl: "http://localhost:5276"
+      EnableApiDocs: "true"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health/ready HTTP/1.0\r\n\r\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 15s
+
+volumes:
+  pg_data:
