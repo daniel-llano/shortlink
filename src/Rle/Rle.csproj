@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Run-length encoding for text without digits.</Description>
+    <PackageId>Rle</PackageId>
+  </PropertyGroup>
+
+</Project>

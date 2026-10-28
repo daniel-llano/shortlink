@@ -1,0 +1,36 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: ./scripts/test.sh
+      - name: Check EF migrations
+        run: |
+          dotnet tool install -g dotnet-ef
+          dotnet ef migrations has-pending-model-changes --project src/ShortLink.Api
+        env:
+          ConnectionStrings__ShortLink: Host=localhost;Database=ci;Username=ci;Password=ci
+          Database__Provider: Postgres
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
