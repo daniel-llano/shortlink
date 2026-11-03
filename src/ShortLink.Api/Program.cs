@@ -1,3 +1,4 @@
+using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -43,11 +44,15 @@ builder.Services.AddRateLimiter(o =>
         }));
 });
 
+// X-Forwarded-* is applied only for requests from the proxies in ForwardedHeaders:KnownProxies/KnownNetworks.
+// With none listed only loopback is trusted, so a client can't spoof its IP or host (dodging the per-IP rate limits or rewriting short URLs) itself.
+var knownProxies = (config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? []).Select(IPAddress.Parse).ToArray();
+var knownNetworks = (config.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? []).Select(System.Net.IPNetwork.Parse).ToArray();
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
     o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
-    o.KnownIPNetworks.Clear();
-    o.KnownProxies.Clear();
+    foreach (var proxy in knownProxies) o.KnownProxies.Add(proxy);
+    foreach (var network in knownNetworks) o.KnownIPNetworks.Add(network);
 });
 
 var app = builder.Build();

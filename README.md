@@ -62,6 +62,7 @@ For quick local work, `dotnet run --project src/ShortLink.Api` uses SQLite and a
 | `Links:AllowHttpTargets` | Off by default, so only https targets are accepted |
 | `Api:Key` | Optional key required to create links |
 | `RateLimiting:CreatesPerMinute` | Per IP, default 30 |
+| `ForwardedHeaders:KnownProxies`, `ForwardedHeaders:KnownNetworks` | IPs and CIDR ranges of the reverse proxies allowed to set `X-Forwarded-For`, `-Proto` and `-Host`. Empty means loopback only |
 
 ## Rle
 
